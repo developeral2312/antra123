@@ -273,8 +273,8 @@ export default function CameraRecorder({ onVideoReady, uploadProgress, isSubmitt
           </p>
         </div>
 
-        {/* Action switch camera if supported */}
-        {hasMultipleCameras && cameraActive && !isRecording && (
+        {/* Action switch camera */}
+        {cameraActive && !isRecording && (
           <button
             type="button"
             onClick={toggleCameraFacing}
@@ -337,7 +337,7 @@ export default function CameraRecorder({ onVideoReady, uploadProgress, isSubmitt
 
         {/* Live Recording Overlay Badge & Timer */}
         {isRecording && (
-          <div className="absolute top-4 left-4 bg-slate-900/90 backdrop-blur-md px-3 py-1.5 rounded-full flex items-center gap-2 border border-slate-700 shadow-lg">
+          <div className="absolute top-4 left-4 bg-slate-900/90 backdrop-blur-md px-3 py-1.5 rounded-full flex items-center gap-2 border border-slate-700 shadow-lg z-20">
             <span className={`w-3 h-3 rounded-full ${isPaused ? 'bg-amber-400' : 'bg-red-500 record-pulse'}`}></span>
             <span className="text-xs font-mono font-bold text-white tracking-wider">
               {formatTime(duration)}
@@ -346,6 +346,19 @@ export default function CameraRecorder({ onVideoReady, uploadProgress, isSubmitt
               <span className="text-[10px] uppercase font-bold text-amber-300 ml-1">PAUSED</span>
             )}
           </div>
+        )}
+
+        {/* Floating Flip Camera Button (Front / Back switch) */}
+        {cameraActive && !previewUrl && !isRecording && (
+          <button
+            type="button"
+            onClick={toggleCameraFacing}
+            className="absolute top-3.5 right-3.5 z-20 bg-slate-900/85 hover:bg-slate-900 text-white px-3 py-1.5 rounded-full flex items-center gap-1.5 text-xs font-semibold backdrop-blur-md border border-slate-700/80 shadow-lg active:scale-95 transition-all"
+            title="Switch between Front and Back Camera"
+          >
+            <SwitchCamera className="w-4 h-4 text-blue-400" />
+            <span>{facingMode === 'environment' ? 'Back Camera (Rear)' : 'Front Camera (Selfie)'}</span>
+          </button>
         )}
 
         {/* Preview Verified Badge */}

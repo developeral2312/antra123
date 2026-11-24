@@ -160,48 +160,105 @@ export default function CustomerRecordsView({ onViewCustomerDetails, onPlayVideo
             <p className="text-xs text-slate-400">Try adjusting your search criteria or register a new customer.</p>
           </div>
         ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full text-left border-collapse">
-              <thead>
-                <tr className="bg-slate-50/80 border-b border-slate-200 text-[11px] font-bold text-slate-500 uppercase tracking-wider">
-                  <th className="py-3 px-4">Customer ID</th>
-                  <th className="py-3 px-4">Customer Name</th>
-                  <th className="py-3 px-4">Phone Number</th>
-                  <th className="py-3 px-4">Total Orders</th>
-                  <th className="py-3 px-4">Registered Date</th>
-                  <th className="py-3 px-4 text-right">Actions</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-100 text-xs">
-                {customers.map((c) => (
-                  <tr key={c.id} className="hover:bg-slate-50/80 transition-colors">
-                    <td className="py-3.5 px-4 font-bold text-blue-700">{c.customer_id}</td>
-                    <td className="py-3.5 px-4 font-semibold text-slate-800">{c.customer_name}</td>
-                    <td className="py-3.5 px-4 text-slate-600">{c.phone_number}</td>
-                    <td className="py-3.5 px-4">
-                      <span className="px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-blue-50 text-blue-700">
-                        {c.total_orders || 0} Orders
+          <>
+            {/* Mobile Cards (Visible on screens < md) */}
+            <div className="md:hidden divide-y divide-slate-100">
+              {customers.map((c) => (
+                <div key={c.id} className="p-4 space-y-3 hover:bg-slate-50/60 transition-colors">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <span className="px-2.5 py-1 rounded-lg bg-blue-50 text-blue-700 font-bold text-xs">
+                        {c.customer_id}
                       </span>
-                    </td>
-                    <td className="py-3.5 px-4 text-slate-500">
-                      {c.created_at ? new Date(c.created_at).toLocaleDateString() : 'N/A'}
-                    </td>
-                    <td className="py-3.5 px-4 text-right">
-                      <div className="flex items-center justify-end gap-2">
-                        <button
-                          onClick={() => openCustomerModal(c.customer_id)}
-                          className="px-3 py-1.5 bg-blue-50 hover:bg-blue-100 text-blue-600 rounded-lg text-xs font-bold transition-colors flex items-center gap-1"
-                        >
-                          <Eye className="w-3.5 h-3.5" />
-                          <span>View Details</span>
-                        </button>
-                      </div>
-                    </td>
+                      <span className="text-xs text-slate-400">
+                        {c.created_at ? new Date(c.created_at).toLocaleDateString() : 'N/A'}
+                      </span>
+                    </div>
+                    <span className="px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-blue-50 text-blue-700">
+                      {c.total_orders || 0} Orders
+                    </span>
+                  </div>
+
+                  <div>
+                    <h3 className="text-sm font-bold text-slate-900">{c.customer_name}</h3>
+                    <p className="text-xs text-slate-500 flex items-center gap-1.5 mt-0.5">
+                      <Phone className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+                      <span>{c.phone_number || 'No phone'}</span>
+                    </p>
+                    {c.address && (
+                      <p className="text-xs text-slate-500 flex items-center gap-1.5 mt-1 line-clamp-1">
+                        <MapPin className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+                        <span>{c.address}</span>
+                      </p>
+                    )}
+                  </div>
+
+                  <div className="flex items-center justify-between pt-1">
+                    <a
+                      href={`/api/customers/${c.customer_id}/pdf`}
+                      download
+                      className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-semibold transition-colors"
+                    >
+                      <Download className="w-3.5 h-3.5 text-blue-600" />
+                      <span>PDF</span>
+                    </a>
+
+                    <button
+                      onClick={() => openCustomerModal(c.customer_id)}
+                      className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-blue-50 hover:bg-blue-100 text-blue-600 font-bold text-xs transition-colors"
+                    >
+                      <Eye className="w-3.5 h-3.5" />
+                      <span>View Details</span>
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            {/* Desktop Table (Visible on screens >= md) */}
+            <div className="hidden md:block overflow-x-auto">
+              <table className="w-full text-left border-collapse">
+                <thead>
+                  <tr className="bg-slate-50/80 border-b border-slate-200 text-[11px] font-bold text-slate-500 uppercase tracking-wider">
+                    <th className="py-3 px-4">Customer ID</th>
+                    <th className="py-3 px-4">Customer Name</th>
+                    <th className="py-3 px-4">Phone Number</th>
+                    <th className="py-3 px-4">Total Orders</th>
+                    <th className="py-3 px-4">Registered Date</th>
+                    <th className="py-3 px-4 text-right">Actions</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+                </thead>
+                <tbody className="divide-y divide-slate-100 text-xs">
+                  {customers.map((c) => (
+                    <tr key={c.id} className="hover:bg-slate-50/80 transition-colors">
+                      <td className="py-3.5 px-4 font-bold text-blue-700">{c.customer_id}</td>
+                      <td className="py-3.5 px-4 font-semibold text-slate-800">{c.customer_name}</td>
+                      <td className="py-3.5 px-4 text-slate-600">{c.phone_number}</td>
+                      <td className="py-3.5 px-4">
+                        <span className="px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-blue-50 text-blue-700">
+                          {c.total_orders || 0} Orders
+                        </span>
+                      </td>
+                      <td className="py-3.5 px-4 text-slate-500">
+                        {c.created_at ? new Date(c.created_at).toLocaleDateString() : 'N/A'}
+                      </td>
+                      <td className="py-3.5 px-4 text-right">
+                        <div className="flex items-center justify-end gap-2">
+                          <button
+                            onClick={() => openCustomerModal(c.customer_id)}
+                            className="px-3 py-1.5 bg-blue-50 hover:bg-blue-100 text-blue-600 rounded-lg text-xs font-bold transition-colors flex items-center gap-1"
+                          >
+                            <Eye className="w-3.5 h-3.5" />
+                            <span>View Details</span>
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </>
         )}
       </div>
 

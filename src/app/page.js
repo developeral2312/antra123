@@ -93,7 +93,7 @@ export default function Home() {
   }
 
   return (
-    <div className="min-h-screen flex bg-slate-50 text-slate-800">
+    <div className="h-screen overflow-hidden flex bg-slate-50 text-slate-800">
       {/* Desktop Navy Sidebar */}
       <Sidebar
         activeTab={activeTab}
@@ -104,7 +104,7 @@ export default function Home() {
       />
 
       {/* Main Content Area */}
-      <div className="flex-1 flex flex-col min-w-0 pb-16 lg:pb-0">
+      <div className="flex-1 h-screen overflow-y-auto flex flex-col min-w-0 pb-16 lg:pb-0">
         <Header
           onToggleMobileNav={() => setMobileNavOpen(true)}
           recentActivity={stats?.recentActivity || []}

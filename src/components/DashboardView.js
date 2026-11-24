@@ -39,20 +39,20 @@ export default function DashboardView({
   return (
     <div className="space-y-6">
       {/* 4 Top Metric Cards (matching screenshot design) */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-5">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-5">
         {/* Card 1: Total Customers */}
-        <div className="bg-white rounded-2xl p-5 border border-slate-200/80 shadow-xs hover:shadow-md transition-all flex items-center justify-between">
-          <div className="flex items-center gap-4">
-            <div className="w-13 h-13 rounded-2xl bg-blue-50 text-blue-600 flex items-center justify-center p-3">
-              <Users className="w-7 h-7" />
+        <div className="bg-white rounded-2xl p-3.5 sm:p-5 border border-slate-200/80 shadow-xs hover:shadow-md transition-all flex items-center justify-between">
+          <div className="flex items-center gap-3 sm:gap-4 overflow-hidden">
+            <div className="w-10 h-10 sm:w-13 sm:h-13 rounded-xl sm:rounded-2xl bg-blue-50 text-blue-600 flex items-center justify-center p-2 sm:p-3 shrink-0">
+              <Users className="w-5 h-5 sm:w-7 sm:h-7" />
             </div>
-            <div>
-              <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Total Customers</p>
-              <div className="flex items-baseline gap-2 mt-0.5">
-                <span className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight">
+            <div className="truncate">
+              <p className="text-[10px] sm:text-xs font-semibold text-slate-500 uppercase tracking-wider truncate">Total Customers</p>
+              <div className="flex items-baseline gap-1.5 sm:gap-2 mt-0.5">
+                <span className="text-xl sm:text-2xl lg:text-3xl font-black text-slate-900 tracking-tight">
                   {metrics.totalCustomers}
                 </span>
-                <span className="text-xs font-bold text-emerald-600 flex items-center">
+                <span className="text-[10px] sm:text-xs font-bold text-emerald-600 flex items-center">
                   ↑ {metrics.customersTrend}
                 </span>
               </div>
@@ -61,18 +61,18 @@ export default function DashboardView({
         </div>
 
         {/* Card 2: Total Orders */}
-        <div className="bg-white rounded-2xl p-5 border border-slate-200/80 shadow-xs hover:shadow-md transition-all flex items-center justify-between">
-          <div className="flex items-center gap-4">
-            <div className="w-13 h-13 rounded-2xl bg-emerald-50 text-emerald-600 flex items-center justify-center p-3">
-              <ShoppingCart className="w-7 h-7" />
+        <div className="bg-white rounded-2xl p-3.5 sm:p-5 border border-slate-200/80 shadow-xs hover:shadow-md transition-all flex items-center justify-between">
+          <div className="flex items-center gap-3 sm:gap-4 overflow-hidden">
+            <div className="w-10 h-10 sm:w-13 sm:h-13 rounded-xl sm:rounded-2xl bg-emerald-50 text-emerald-600 flex items-center justify-center p-2 sm:p-3 shrink-0">
+              <ShoppingCart className="w-5 h-5 sm:w-7 sm:h-7" />
             </div>
-            <div>
-              <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Total Orders</p>
-              <div className="flex items-baseline gap-2 mt-0.5">
-                <span className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight">
+            <div className="truncate">
+              <p className="text-[10px] sm:text-xs font-semibold text-slate-500 uppercase tracking-wider truncate">Total Orders</p>
+              <div className="flex items-baseline gap-1.5 sm:gap-2 mt-0.5">
+                <span className="text-xl sm:text-2xl lg:text-3xl font-black text-slate-900 tracking-tight">
                   {metrics.totalOrders}
                 </span>
-                <span className="text-xs font-bold text-emerald-600 flex items-center">
+                <span className="text-[10px] sm:text-xs font-bold text-emerald-600 flex items-center">
                   ↑ {metrics.ordersTrend}
                 </span>
               </div>
@@ -81,18 +81,18 @@ export default function DashboardView({
         </div>
 
         {/* Card 3: Total Videos */}
-        <div className="bg-white rounded-2xl p-5 border border-slate-200/80 shadow-xs hover:shadow-md transition-all flex items-center justify-between">
-          <div className="flex items-center gap-4">
-            <div className="w-13 h-13 rounded-2xl bg-purple-50 text-purple-600 flex items-center justify-center p-3">
-              <Video className="w-7 h-7" />
+        <div className="bg-white rounded-2xl p-3.5 sm:p-5 border border-slate-200/80 shadow-xs hover:shadow-md transition-all flex items-center justify-between">
+          <div className="flex items-center gap-3 sm:gap-4 overflow-hidden">
+            <div className="w-10 h-10 sm:w-13 sm:h-13 rounded-xl sm:rounded-2xl bg-purple-50 text-purple-600 flex items-center justify-center p-2 sm:p-3 shrink-0">
+              <Video className="w-5 h-5 sm:w-7 sm:h-7" />
             </div>
-            <div>
-              <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Total Videos</p>
-              <div className="flex items-baseline gap-2 mt-0.5">
-                <span className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight">
+            <div className="truncate">
+              <p className="text-[10px] sm:text-xs font-semibold text-slate-500 uppercase tracking-wider truncate">Total Videos</p>
+              <div className="flex items-baseline gap-1.5 sm:gap-2 mt-0.5">
+                <span className="text-xl sm:text-2xl lg:text-3xl font-black text-slate-900 tracking-tight">
                   {metrics.totalVideos}
                 </span>
-                <span className="text-xs font-bold text-emerald-600 flex items-center">
+                <span className="text-[10px] sm:text-xs font-bold text-emerald-600 flex items-center">
                   ↑ {metrics.videosTrend}
                 </span>
               </div>
@@ -101,18 +101,18 @@ export default function DashboardView({
         </div>
 
         {/* Card 4: Today's Orders */}
-        <div className="bg-white rounded-2xl p-5 border border-slate-200/80 shadow-xs hover:shadow-md transition-all flex items-center justify-between">
-          <div className="flex items-center gap-4">
-            <div className="w-13 h-13 rounded-2xl bg-amber-50 text-amber-600 flex items-center justify-center p-3">
-              <Calendar className="w-7 h-7" />
+        <div className="bg-white rounded-2xl p-3.5 sm:p-5 border border-slate-200/80 shadow-xs hover:shadow-md transition-all flex items-center justify-between">
+          <div className="flex items-center gap-3 sm:gap-4 overflow-hidden">
+            <div className="w-10 h-10 sm:w-13 sm:h-13 rounded-xl sm:rounded-2xl bg-amber-50 text-amber-600 flex items-center justify-center p-2 sm:p-3 shrink-0">
+              <Calendar className="w-5 h-5 sm:w-7 sm:h-7" />
             </div>
-            <div>
-              <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Today&apos;s Orders</p>
-              <div className="flex items-baseline gap-2 mt-0.5">
-                <span className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight">
+            <div className="truncate">
+              <p className="text-[10px] sm:text-xs font-semibold text-slate-500 uppercase tracking-wider truncate">Today&apos;s Orders</p>
+              <div className="flex items-baseline gap-1.5 sm:gap-2 mt-0.5">
+                <span className="text-xl sm:text-2xl lg:text-3xl font-black text-slate-900 tracking-tight">
                   {metrics.todayOrders}
                 </span>
-                <span className="text-xs font-bold text-emerald-600 flex items-center">
+                <span className="text-[10px] sm:text-xs font-bold text-emerald-600 flex items-center">
                   ↑ {metrics.todayTrend}
                 </span>
               </div>

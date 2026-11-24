@@ -1,7 +1,23 @@
-const Database = require('better-sqlite3');
 const path = require('path');
 const fs = require('fs');
 const bcrypt = require('bcryptjs');
+
+let Database;
+let isNodeSqlite = false;
+
+try {
+  // Built into Node 22.5+ and Node 24+ without any external compilation or node-gyp
+  const { DatabaseSync } = require('node:sqlite');
+  Database = DatabaseSync;
+  isNodeSqlite = true;
+} catch (e) {
+  try {
+    Database = require('better-sqlite3');
+  } catch (err) {
+    console.error('Failed to load SQLite module (node:sqlite or better-sqlite3):', err);
+    throw err;
+  }
+}
 
 const DB_DIR = path.join(process.cwd(), 'data');
 if (!fs.existsSync(DB_DIR)) {
@@ -16,6 +32,32 @@ function getDb() {
   if (dbInstance) return dbInstance;
 
   dbInstance = new Database(DB_PATH);
+
+  if (isNodeSqlite) {
+    // Polyfill pragma method
+    if (!dbInstance.pragma) {
+      dbInstance.pragma = function (pragmaStr) {
+        return dbInstance.exec(`PRAGMA ${pragmaStr};`);
+      };
+    }
+
+    // Wrap prepare to gracefully map `undefined` to `null` (matching better-sqlite3 behavior)
+    const origPrepare = dbInstance.prepare.bind(dbInstance);
+    dbInstance.prepare = function (sql) {
+      const stmt = origPrepare(sql);
+      const origRun = stmt.run.bind(stmt);
+      const origGet = stmt.get.bind(stmt);
+      const origAll = stmt.all.bind(stmt);
+
+      const sanitize = (params) => params.map((p) => (p === undefined ? null : p));
+
+      stmt.run = (...args) => origRun(...sanitize(args));
+      stmt.get = (...args) => origGet(...sanitize(args));
+      stmt.all = (...args) => origAll(...sanitize(args));
+      return stmt;
+    };
+  }
+
   dbInstance.pragma('journal_mode = WAL');
   dbInstance.pragma('foreign_keys = ON');
 

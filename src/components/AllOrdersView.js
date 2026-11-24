@@ -108,75 +108,145 @@ export default function AllOrdersView({ onPlayVideo, onViewCustomer }) {
             <p className="text-xs text-slate-400">Try adjusting your filter or record a new order.</p>
           </div>
         ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full text-left border-collapse">
-              <thead>
-                <tr className="bg-slate-50/80 border-b border-slate-200 text-[11px] font-bold text-slate-500 uppercase tracking-wider">
-                  <th className="py-3 px-4">Order Number</th>
-                  <th className="py-3 px-4">Customer</th>
-                  <th className="py-3 px-4">Order Date</th>
-                  <th className="py-3 px-4">Description</th>
-                  <th className="py-3 px-4">Video Status</th>
-                  <th className="py-3 px-4 text-right">Actions</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-100 text-xs">
-                {orders.map((ord) => (
-                  <tr key={ord.id} className="hover:bg-slate-50/80 transition-colors">
-                    <td className="py-3.5 px-4 font-bold text-blue-700">{ord.order_number}</td>
-                    <td className="py-3.5 px-4">
+          <>
+            {/* Mobile Cards (Visible on screens < md) */}
+            <div className="md:hidden divide-y divide-slate-100">
+              {orders.map((ord) => (
+                <div key={ord.id} className="p-4 space-y-3 hover:bg-slate-50/60 transition-colors">
+                  <div className="flex items-center justify-between">
+                    <span className="font-bold text-xs text-blue-700 bg-blue-50 px-2.5 py-1 rounded-lg">
+                      #{ord.order_number}
+                    </span>
+                    <span className="text-xs text-slate-400 font-medium">
+                      {ord.order_date || 'N/A'}
+                    </span>
+                  </div>
+
+                  <div>
+                    <button
+                      onClick={() => onViewCustomer(ord.customer_id)}
+                      className="text-left group"
+                    >
+                      <p className="font-bold text-sm text-slate-800 group-hover:text-blue-600 transition-colors">
+                        {ord.customer_name}
+                      </p>
+                      <p className="text-xs text-slate-400">{ord.customer_id}</p>
+                    </button>
+                    {ord.description && (
+                      <p className="text-xs text-slate-600 mt-1 line-clamp-2">
+                        {ord.description}
+                      </p>
+                    )}
+                  </div>
+
+                  <div className="flex items-center justify-between pt-1">
+                    <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-700">
+                      {ord.upload_status || 'Uploaded'}
+                    </span>
+
+                    <div className="flex items-center gap-2">
+                      {ord.video_id && (
+                        <button
+                          onClick={() => onPlayVideo(ord.video_id, ord.order_number)}
+                          title="Play Video"
+                          className="p-1.5 bg-blue-50 hover:bg-blue-100 text-blue-600 rounded-lg transition-colors"
+                        >
+                          <Play className="w-4 h-4 fill-blue-600" />
+                        </button>
+                      )}
+
+                      <a
+                        href={`/api/orders/${ord.order_number}/pdf`}
+                        download
+                        title="Download Order PDF"
+                        className="p-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg transition-colors"
+                      >
+                        <Download className="w-4 h-4 text-blue-600" />
+                      </a>
+
                       <button
                         onClick={() => onViewCustomer(ord.customer_id)}
-                        className="text-left group"
+                        className="px-2.5 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg text-xs font-bold transition-colors"
                       >
-                        <p className="font-bold text-slate-800 group-hover:text-blue-600 transition-colors">{ord.customer_name}</p>
-                        <p className="text-[11px] text-slate-400">{ord.customer_id}</p>
+                        View
                       </button>
-                    </td>
-                    <td className="py-3.5 px-4 text-slate-600 font-medium">{ord.order_date || 'N/A'}</td>
-                    <td className="py-3.5 px-4 text-slate-600 max-w-xs truncate">
-                      {ord.description || 'No description'}
-                    </td>
-                    <td className="py-3.5 px-4">
-                      <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-700">
-                        {ord.upload_status || 'Uploaded'}
-                      </span>
-                    </td>
-                    <td className="py-3.5 px-4 text-right">
-                      <div className="flex items-center justify-end gap-2">
-                        {ord.video_id && (
-                          <button
-                            onClick={() => onPlayVideo(ord.video_id, ord.order_number)}
-                            title="Play Video"
-                            className="p-1.5 bg-blue-50 hover:bg-blue-100 text-blue-600 rounded-lg transition-colors"
-                          >
-                            <Play className="w-4 h-4 fill-blue-600" />
-                          </button>
-                        )}
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
 
-                        <a
-                          href={`/api/orders/${ord.order_number}/pdf`}
-                          download
-                          title="Download Order PDF"
-                          className="p-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg transition-colors"
-                        >
-                          <Download className="w-4 h-4" />
-                        </a>
-
+            {/* Desktop Table (Visible on screens >= md) */}
+            <div className="hidden md:block overflow-x-auto">
+              <table className="w-full text-left border-collapse">
+                <thead>
+                  <tr className="bg-slate-50/80 border-b border-slate-200 text-[11px] font-bold text-slate-500 uppercase tracking-wider">
+                    <th className="py-3 px-4">Order Number</th>
+                    <th className="py-3 px-4">Customer</th>
+                    <th className="py-3 px-4">Order Date</th>
+                    <th className="py-3 px-4">Description</th>
+                    <th className="py-3 px-4">Video Status</th>
+                    <th className="py-3 px-4 text-right">Actions</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100 text-xs">
+                  {orders.map((ord) => (
+                    <tr key={ord.id} className="hover:bg-slate-50/80 transition-colors">
+                      <td className="py-3.5 px-4 font-bold text-blue-700">{ord.order_number}</td>
+                      <td className="py-3.5 px-4">
                         <button
                           onClick={() => onViewCustomer(ord.customer_id)}
-                          title="View Customer"
-                          className="px-2.5 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg text-xs font-bold transition-colors"
+                          className="text-left group"
                         >
-                          View
+                          <p className="font-bold text-slate-800 group-hover:text-blue-600 transition-colors">{ord.customer_name}</p>
+                          <p className="text-[11px] text-slate-400">{ord.customer_id}</p>
                         </button>
-                      </div>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+                      </td>
+                      <td className="py-3.5 px-4 text-slate-600 font-medium">{ord.order_date || 'N/A'}</td>
+                      <td className="py-3.5 px-4 text-slate-600 max-w-xs truncate">
+                        {ord.description || 'No description'}
+                      </td>
+                      <td className="py-3.5 px-4">
+                        <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-700">
+                          {ord.upload_status || 'Uploaded'}
+                        </span>
+                      </td>
+                      <td className="py-3.5 px-4 text-right">
+                        <div className="flex items-center justify-end gap-2">
+                          {ord.video_id && (
+                            <button
+                              onClick={() => onPlayVideo(ord.video_id, ord.order_number)}
+                              title="Play Video"
+                              className="p-1.5 bg-blue-50 hover:bg-blue-100 text-blue-600 rounded-lg transition-colors"
+                            >
+                              <Play className="w-4 h-4 fill-blue-600" />
+                            </button>
+                          )}
+
+                          <a
+                            href={`/api/orders/${ord.order_number}/pdf`}
+                            download
+                            title="Download Order PDF"
+                            className="p-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg transition-colors"
+                          >
+                            <Download className="w-4 h-4 text-blue-600" />
+                          </a>
+
+                          <button
+                            onClick={() => onViewCustomer(ord.customer_id)}
+                            title="View Customer"
+                            className="px-2.5 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg text-xs font-bold transition-colors"
+                          >
+                            View
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </>
         )}
       </div>
     </div>

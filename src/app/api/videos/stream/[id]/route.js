@@ -1,13 +1,7 @@
 import fs from 'fs';
-import { getAuthUser } from '@/lib/api-auth';
 const { getDb } = require('@/lib/db');
 
 export async function GET(req, { params }) {
-  const user = getAuthUser();
-  if (!user) {
-    return new Response('Unauthorized', { status: 401 });
-  }
-
   const videoId = params.id;
   const db = getDb();
 
@@ -24,7 +18,7 @@ export async function GET(req, { params }) {
   const fileSize = stat.size;
   const range = req.headers.get('range');
 
-  const contentType = video.mime_type || 'video/mp4';
+  const contentType = video.mime_type || (video.video_name?.endsWith('.webm') ? 'video/webm' : 'video/mp4');
 
   if (range) {
     const parts = range.replace(/bytes=/, "").split("-");
