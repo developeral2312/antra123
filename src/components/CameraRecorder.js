@@ -1,15 +1,15 @@
 'use client';
 import React, { useState, useRef, useEffect, useCallback } from 'react';
-import { 
-  Camera, 
-  Video, 
-  Square, 
-  Play, 
-  Pause, 
-  RotateCcw, 
-  Upload, 
-  SwitchCamera, 
-  AlertCircle, 
+import {
+  Camera,
+  Video,
+  Square,
+  Play,
+  Pause,
+  RotateCcw,
+  Upload,
+  SwitchCamera,
+  AlertCircle,
   CheckCircle,
   FileVideo,
   Eye
@@ -360,7 +360,6 @@ export default function CameraRecorder({ onVideoReady, uploadProgress, isSubmitt
             <span>{facingMode === 'environment' ? 'Back Camera (Rear)' : 'Front Camera (Selfie)'}</span>
           </button>
         )}
-
         {/* Preview Verified Badge */}
         {previewUrl && (
           <div className="absolute top-4 left-4 bg-emerald-600/90 backdrop-blur-md text-white px-3 py-1.5 rounded-full flex items-center gap-1.5 text-xs font-semibold shadow-lg">
@@ -369,7 +368,6 @@ export default function CameraRecorder({ onVideoReady, uploadProgress, isSubmitt
           </div>
         )}
       </div>
-
       {/* Camera & Recording Controls */}
       <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
         <div className="flex flex-wrap items-center gap-2">
@@ -476,7 +474,7 @@ export default function CameraRecorder({ onVideoReady, uploadProgress, isSubmitt
             <span className="font-mono font-bold text-blue-800">{uploadProgress || 65}%</span>
           </div>
           <div className="w-full bg-slate-100 rounded-full h-2 overflow-hidden">
-            <div 
+            <div
               className="bg-gradient-to-r from-blue-500 to-indigo-600 h-2 rounded-full transition-all duration-300"
               style={{ width: `${uploadProgress || 65}%` }}
             />
