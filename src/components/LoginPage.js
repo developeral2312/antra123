@@ -1,10 +1,10 @@
 'use client';
 import React, { useState } from 'react';
-import { Lock, Mail, ArrowRight, ShieldCheck, AlertCircle } from 'lucide-react';
+import { Lock, Mail, ArrowRight, AlertCircle } from 'lucide-react';
 
 export default function LoginPage({ onLoginSuccess }) {
-  const [email, setEmail] = useState('admin@antra.com');
-  const [password, setPassword] = useState('admin123');
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 
@@ -48,7 +48,7 @@ export default function LoginPage({ onLoginSuccess }) {
             Customer Order Management System
           </p>
           <p className="text-xs text-slate-500 mt-2">
-            Secure Administrator Portal & Google Drive Archive
+            Secure Administrator Portal & PostgreSQL Archive
           </p>
         </div>
 
@@ -71,7 +71,7 @@ export default function LoginPage({ onLoginSuccess }) {
                 required
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                placeholder="admin@antra.com"
+                placeholder="Enter email address"
                 className="w-full pl-11 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-600 font-medium text-slate-800 transition-all"
               />
             </div>
@@ -92,11 +92,6 @@ export default function LoginPage({ onLoginSuccess }) {
                 className="w-full pl-11 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-600 font-medium text-slate-800 transition-all"
               />
             </div>
-          </div>
-
-          <div className="p-3 bg-blue-50/70 border border-blue-100 rounded-xl text-xs text-blue-800 flex items-center gap-2">
-            <ShieldCheck className="w-4 h-4 text-blue-600 shrink-0" />
-            <span>Default Seed Credentials: <strong>admin@antra.com</strong> / <strong>admin123</strong></span>
           </div>
 
           <button

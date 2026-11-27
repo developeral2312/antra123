@@ -15,7 +15,7 @@ import {
   Check
 } from 'lucide-react';
 
-export default function Sidebar({ activeTab, setActiveTab, onLogout, driveStatus, user }) {
+export default function Sidebar({ activeTab, setActiveTab, onLogout, dbStatus, user }) {
   const [isCollapsed, setIsCollapsed] = useState(false);
 
   const menuSections = [
@@ -160,10 +160,10 @@ export default function Sidebar({ activeTab, setActiveTab, onLogout, driveStatus
       <div className={`pt-4 mt-auto border-t border-slate-800/80 ${isCollapsed ? 'space-y-3 flex flex-col items-center' : 'space-y-2.5'}`}>
         {isCollapsed ? (
           <>
-            {/* Google Drive Status Button (Collapsed) */}
+            {/* PostgreSQL Status Button (Collapsed) */}
             <button
               onClick={() => setActiveTab('settings')}
-              title={`Google Drive: ${driveStatus?.connected ? 'Connected' : 'Drive Sync Ready'}`}
+              title={`PostgreSQL: ${dbStatus?.connected ? 'Connected' : 'Active'}`}
               className="w-10 h-10 rounded-xl bg-emerald-950/50 hover:bg-emerald-900/50 border border-emerald-500/30 text-emerald-400 flex items-center justify-center transition-all relative group"
             >
               <CheckCircle2 className="w-5 h-5 text-emerald-400" />
@@ -183,15 +183,15 @@ export default function Sidebar({ activeTab, setActiveTab, onLogout, driveStatus
           </>
         ) : (
           <>
-            {/* Google Drive Status Pill (Expanded) */}
+            {/* PostgreSQL Status Pill (Expanded) */}
             <div 
               onClick={() => setActiveTab('settings')}
-              title="Google Drive Settings"
+              title="PostgreSQL Database Diagnostics"
               className="cursor-pointer bg-emerald-950/40 hover:bg-emerald-900/40 border border-emerald-500/30 text-emerald-400 rounded-full px-3 py-1.5 flex items-center justify-between text-xs transition-all"
             >
               <div className="flex items-center gap-2">
                 <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
-                <span className="font-semibold text-[11px] text-emerald-300">Google Drive Sync</span>
+                <span className="font-semibold text-[11px] text-emerald-300">PostgreSQL Active</span>
               </div>
               <div className="w-4 h-4 rounded-full bg-emerald-500/20 flex items-center justify-center shrink-0">
                 <Check className="w-2.5 h-2.5 text-emerald-300" />

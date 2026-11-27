@@ -1,7 +1,8 @@
 import { NextResponse } from 'next/server';
 import { getAuthUser } from '@/lib/api-auth';
-const { getDb } = require('@/lib/db');
+const { query } = require('@/lib/db');
 const { processOrderSubmission } = require('@/lib/storage');
+const { getRequestBaseUrl } = require('@/lib/pdf');
 
 export async function GET(req) {
   const user = getAuthUser();
@@ -14,8 +15,7 @@ export async function GET(req) {
   const status = searchParams.get('status') || '';
   const sort = searchParams.get('sort') || 'newest';
 
-  const db = getDb();
-  let query = `
+  let sql = `
     SELECT 
       o.id,
       o.order_number,
@@ -23,13 +23,11 @@ export async function GET(req) {
       o.order_date,
       o.description,
       o.remarks,
-      o.google_drive_folder_id,
       o.created_at,
       c.customer_name,
       c.phone_number,
       v.id as video_id,
       v.video_name,
-      v.google_drive_file_id,
       v.video_url,
       v.upload_status,
       v.duration_seconds,
@@ -42,24 +40,24 @@ export async function GET(req) {
   const params = [];
 
   if (search) {
-    query += ` AND (o.order_number LIKE ? OR o.customer_id LIKE ? OR c.customer_name LIKE ? OR o.description LIKE ?)`;
-    const pattern = `%${search}%`;
-    params.push(pattern, pattern, pattern, pattern);
+    params.push(`%${search}%`);
+    const p = `$${params.length}`;
+    sql += ` AND (o.order_number ILIKE ${p} OR o.customer_id ILIKE ${p} OR c.customer_name ILIKE ${p} OR o.description ILIKE ${p})`;
   }
 
   if (status) {
-    query += ` AND v.upload_status = ?`;
     params.push(status);
+    sql += ` AND v.upload_status = $${params.length}`;
   }
 
   if (sort === 'oldest') {
-    query += ` ORDER BY o.id ASC`;
+    sql += ` ORDER BY o.id ASC`;
   } else {
-    query += ` ORDER BY o.id DESC`;
+    sql += ` ORDER BY o.id DESC`;
   }
 
-  const orders = db.prepare(query).all(...params);
-  return NextResponse.json({ orders });
+  const res = await query(sql, params);
+  return NextResponse.json({ orders: res.rows });
 }
 
 export async function POST(req) {
@@ -89,47 +87,49 @@ export async function POST(req) {
       return NextResponse.json({ error: 'Customer Name, Phone, and Address are required.' }, { status: 400 });
     }
 
-    const db = getDb();
-
     // Auto-generate Customer ID if empty
     if (!customer_id) {
-      const countRow = db.prepare('SELECT count(*) as count FROM customers').get();
-      customer_id = `CUST${String(countRow.count + 1).padStart(3, '0')}`;
+      const countRes = await query('SELECT COUNT(*)::int AS count FROM customers');
+      customer_id = `CUST${String(countRes.rows[0].count + 1).padStart(3, '0')}`;
     }
 
     // Auto-generate Order Number if empty
     if (!order_number) {
-      const ordCount = db.prepare('SELECT count(*) as count FROM orders').get();
-      order_number = `ORD-${String(ordCount.count + 1).padStart(3, '0')}`;
+      const ordCountRes = await query('SELECT COUNT(*)::int AS count FROM orders');
+      order_number = `ORD-${String(ordCountRes.rows[0].count + 1).padStart(3, '0')}`;
     }
 
     // Check duplicate order number
-    const existingOrder = db.prepare('SELECT id FROM orders WHERE order_number = ?').get(order_number);
-    if (existingOrder) {
+    const existingOrder = await query('SELECT id FROM orders WHERE order_number = $1', [order_number]);
+    if (existingOrder.rows.length > 0) {
       return NextResponse.json({ error: `Order Number ${order_number} already exists.` }, { status: 409 });
     }
 
     // 2. Find or Create Customer
-    let customer = db.prepare('SELECT * FROM customers WHERE customer_id = ?').get(customer_id);
+    const custRes = await query('SELECT * FROM customers WHERE customer_id = $1', [customer_id]);
+    let customer = custRes.rows[0];
     const now = new Date().toISOString();
 
     if (!customer) {
-      const info = db.prepare(`
-        INSERT INTO customers (customer_id, customer_name, phone_number, address, created_at, updated_at)
-        VALUES (?, ?, ?, ?, ?, ?)
-      `).run(customer_id, customer_name, phone_number, address, now, now);
-      customer = { id: info.lastInsertRowid, customer_id, customer_name, phone_number, address, created_at: now };
+      const insertCust = await query(
+        `INSERT INTO customers (customer_id, customer_name, phone_number, address, created_at, updated_at)
+         VALUES ($1, $2, $3, $4, $5, $6)
+         RETURNING id`,
+        [customer_id, customer_name, phone_number, address, now, now]
+      );
+      customer = { id: insertCust.rows[0].id, customer_id, customer_name, phone_number, address, created_at: now };
 
-      db.prepare(`
-        INSERT INTO activity_logs (type, title, description, customer_id, created_at)
-        VALUES (?, ?, ?, ?, ?)
-      `).run('customer_created', `New customer added: ${customer_name}`, `Registered ID ${customer_id}`, customer_id, now);
+      await query(
+        `INSERT INTO activity_logs (type, title, description, customer_id, created_at)
+         VALUES ($1, $2, $3, $4, $5)`,
+        ['customer_created', `New customer added: ${customer_name}`, `Registered ID ${customer_id}`, customer_id, now]
+      );
     } else {
-      // Update customer info if name/phone/address changed
-      db.prepare(`
-        UPDATE customers SET customer_name = ?, phone_number = ?, address = ?, updated_at = ?
-        WHERE id = ?
-      `).run(customer_name, phone_number, address, now, customer.id);
+      await query(
+        `UPDATE customers SET customer_name = $1, phone_number = $2, address = $3, updated_at = $4
+         WHERE id = $5`,
+        [customer_name, phone_number, address, now, customer.id]
+      );
       customer = { ...customer, customer_name, phone_number, address };
     }
 
@@ -148,13 +148,13 @@ export async function POST(req) {
       videoMeta.file_size = videoBuffer.length;
       videoMeta.mime_type = videoFile.type || 'video/mp4';
       if (videoFile.name) {
-        videoMeta.video_name = videoFile.name.endsWith('.mp4') || videoFile.name.endsWith('.webm') 
-          ? videoFile.name 
+        videoMeta.video_name = videoFile.name.endsWith('.mp4') || videoFile.name.endsWith('.webm')
+          ? videoFile.name
           : `${videoFile.name}.mp4`;
       }
     }
 
-    // 4. File System Hierarchy, PDF Generation & Google Drive Sync
+    // 4. File System Hierarchy & PDF Generation
     const storageRes = await processOrderSubmission({
       customer,
       order: {
@@ -165,79 +165,68 @@ export async function POST(req) {
         created_at: now
       },
       videoBuffer,
-      videoMeta
+      videoMeta,
+      baseUrl: getRequestBaseUrl(req)
     });
 
-    // 5. Save Order to Database
-    const orderInsert = db.prepare(`
-      INSERT INTO orders (order_number, customer_id, order_date, description, remarks, google_drive_folder_id, created_at)
-      VALUES (?, ?, ?, ?, ?, ?, ?)
-    `).run(
-      order_number,
-      customer_id,
-      order_date,
-      description,
-      remarks,
-      storageRes.driveResults.orderFolderId || null,
-      now
+    // 5. Save Order to PostgreSQL Database
+    const orderInsert = await query(
+      `INSERT INTO orders (order_number, customer_id, order_date, description, remarks, created_at)
+       VALUES ($1, $2, $3, $4, $5, $6)
+       RETURNING id`,
+      [order_number, customer_id, order_date, description, remarks, now]
     );
+    const orderId = orderInsert.rows[0].id;
 
-    const orderId = orderInsert.lastInsertRowid;
-
-    // Update customer's drive folder ID if acquired
-    if (storageRes.driveResults.customerFolderId && !customer.google_drive_folder_id) {
-      db.prepare('UPDATE customers SET google_drive_folder_id = ? WHERE id = ?')
-        .run(storageRes.driveResults.customerFolderId, customer.id);
-    }
-
-    // 6. Save Video Record to Database
+    // 6. Save Video Record to PostgreSQL Database
     let videoId = null;
     if (videoBuffer && videoBuffer.length > 0) {
-      const uploadStatus = storageRes.driveResults.isDriveConnected ? 'uploaded' : 'saved_locally';
-
-      const videoInsert = db.prepare(`
-        INSERT INTO order_videos (order_id, order_number, video_name, google_drive_file_id, video_url, local_path, upload_status, file_size, duration_seconds, mime_type, created_at)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-      `).run(
-        orderId,
-        order_number,
-        storageRes.videoFileName,
-        storageRes.driveResults.videoFileId || null,
-        storageRes.driveResults.videoDriveUrl || null,
-        storageRes.orderVideoPath,
-        uploadStatus,
-        videoMeta.file_size,
-        videoMeta.duration_seconds,
-        videoMeta.mime_type,
-        now
+      const videoInsert = await query(
+        `INSERT INTO order_videos (order_id, order_number, video_name, video_url, local_path, upload_status, file_size, duration_seconds, mime_type, created_at)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+         RETURNING id`,
+        [
+          orderId,
+          order_number,
+          storageRes.videoFileName,
+          `/api/videos/stream/${order_number}`,
+          storageRes.orderVideoPath,
+          'uploaded',
+          videoMeta.file_size,
+          videoMeta.duration_seconds,
+          videoMeta.mime_type,
+          now
+        ]
       );
-      videoId = videoInsert.lastInsertRowid;
+      videoId = videoInsert.rows[0].id;
     }
 
     // 7. Log Activity
-    db.prepare(`
-      INSERT INTO activity_logs (type, title, description, customer_id, order_number, created_at)
-      VALUES (?, ?, ?, ?, ?, ?)
-    `).run(
-      'order_created',
-      `Order recorded for ${customer.customer_id} (Order #${order_number})`,
-      description ? description.substring(0, 60) : 'Order details registered',
-      customer.customer_id,
-      order_number,
-      now
-    );
-
-    if (videoId) {
-      db.prepare(`
-        INSERT INTO activity_logs (type, title, description, customer_id, order_number, created_at)
-        VALUES (?, ?, ?, ?, ?, ?)
-      `).run(
-        'video_uploaded',
-        `Video recorded successfully for ${customer.customer_id}`,
-        `Order #${order_number} video (${Math.round(videoMeta.duration_seconds)}s) archived.`,
+    await query(
+      `INSERT INTO activity_logs (type, title, description, customer_id, order_number, created_at)
+       VALUES ($1, $2, $3, $4, $5, $6)`,
+      [
+        'order_created',
+        `Order recorded for ${customer.customer_id} (Order #${order_number})`,
+        description ? description.substring(0, 60) : 'Order details registered',
         customer.customer_id,
         order_number,
         now
+      ]
+    );
+
+    if (videoId) {
+      await query(
+        `INSERT INTO activity_logs (type, title, description, customer_id, order_number, created_at)
+         VALUES ($1, $2, $3, $4, $5, $6)`,
+        [
+          'video_uploaded',
+          `Video recorded successfully for ${customer.customer_id}`,
+          `Order #${order_number} video (${Math.round(videoMeta.duration_seconds)}s) archived.`,
+          customer.customer_id,
+          order_number,
+          now
+        ]
       );
     }
 
@@ -247,10 +236,8 @@ export async function POST(req) {
       customer_id: customer.customer_id,
       order_number,
       order_id: orderId,
-      video_id: videoId,
-      drive_synced: storageRes.driveResults.isDriveConnected
+      video_id: videoId
     });
-
   } catch (err) {
     console.error('Order creation error:', err);
     return NextResponse.json({ error: err.message || 'Internal server error while processing order' }, { status: 500 });

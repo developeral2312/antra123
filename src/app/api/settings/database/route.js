@@ -1,8 +1,6 @@
 import { NextResponse } from 'next/server';
 import { getAuthUser } from '@/lib/api-auth';
-const { getDb } = require('@/lib/db');
-const fs = require('fs');
-const path = require('path');
+const { query } = require('@/lib/db');
 
 export async function GET() {
   const user = getAuthUser();
@@ -10,32 +8,40 @@ export async function GET() {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
-  const db = getDb();
-  const dbPath = path.join(process.cwd(), 'data', 'antra.sqlite');
-  let fileSizeMb = 0;
-  if (fs.existsSync(dbPath)) {
-    fileSizeMb = (fs.statSync(dbPath).size / (1024 * 1024)).toFixed(2);
-  }
+  try {
+    const dbInfoRes = await query(`
+      SELECT 
+        current_database() AS db_name,
+        pg_database_size(current_database())::bigint AS size_bytes,
+        version() AS pg_version
+    `);
+    const dbInfo = dbInfoRes.rows[0];
+    const sizeMb = (Number(dbInfo.size_bytes) / (1024 * 1024)).toFixed(2);
 
-  const customersCount = db.prepare('SELECT count(*) as count FROM customers').get().count;
-  const ordersCount = db.prepare('SELECT count(*) as count FROM orders').get().count;
-  const videosCount = db.prepare('SELECT count(*) as count FROM order_videos').get().count;
-  const logsCount = db.prepare('SELECT count(*) as count FROM activity_logs').get().count;
+    const customersCount = (await query('SELECT COUNT(*)::int AS count FROM customers')).rows[0].count;
+    const ordersCount = (await query('SELECT COUNT(*)::int AS count FROM orders')).rows[0].count;
+    const videosCount = (await query('SELECT COUNT(*)::int AS count FROM order_videos')).rows[0].count;
+    const logsCount = (await query('SELECT COUNT(*)::int AS count FROM activity_logs')).rows[0].count;
 
-  return NextResponse.json({
-    database: {
-      type: 'SQLite Relational Database (WAL Mode)',
-      path: 'data/antra.sqlite',
-      sizeMb: fileSizeMb,
-      status: 'healthy',
-      counts: {
-        customers: customersCount,
-        orders: ordersCount,
-        videos: videosCount,
-        logs: logsCount
+    return NextResponse.json({
+      database: {
+        type: 'PostgreSQL Relational Database',
+        name: dbInfo.db_name,
+        version: dbInfo.pg_version?.split(',')[0] || 'PostgreSQL',
+        sizeMb,
+        status: 'healthy',
+        counts: {
+          customers: customersCount,
+          orders: ordersCount,
+          videos: videosCount,
+          logs: logsCount
+        }
       }
-    }
-  });
+    });
+  } catch (err) {
+    console.error('PostgreSQL diagnostics error:', err);
+    return NextResponse.json({ error: 'Failed to connect to PostgreSQL: ' + err.message }, { status: 500 });
+  }
 }
 
 // Optional endpoint to seed sample data for quick admin demonstration
@@ -46,7 +52,6 @@ export async function POST(req) {
   }
 
   const { action } = await req.json();
-  const db = getDb();
 
   if (action === 'seed_demo') {
     const samples = [
@@ -61,28 +66,29 @@ export async function POST(req) {
       const s = samples[i];
       const time = new Date(now.getTime() - i * 3600000).toISOString();
 
-      // Check customer
-      let cust = db.prepare('SELECT id FROM customers WHERE customer_id = ?').get(s.id);
-      if (!cust) {
-        db.prepare(`
-          INSERT INTO customers (customer_id, customer_name, phone_number, address, created_at, updated_at)
-          VALUES (?, ?, ?, ?, ?, ?)
-        `).run(s.id, s.name, s.phone, s.addr, time, time);
+      const cust = await query('SELECT id FROM customers WHERE customer_id = $1', [s.id]);
+      if (cust.rows.length === 0) {
+        await query(
+          `INSERT INTO customers (customer_id, customer_name, phone_number, address, created_at, updated_at)
+           VALUES ($1, $2, $3, $4, $5, $6)`,
+          [s.id, s.name, s.phone, s.addr, time, time]
+        );
       }
 
-      // Check order
-      let ord = db.prepare('SELECT id FROM orders WHERE order_number = ?').get(s.ord);
-      if (!ord) {
-        const ordRes = db.prepare(`
-          INSERT INTO orders (order_number, customer_id, order_date, description, remarks, created_at)
-          VALUES (?, ?, ?, ?, ?, ?)
-        `).run(s.ord, s.id, time.split('T')[0], s.desc, s.remarks, time);
+      const ord = await query('SELECT id FROM orders WHERE order_number = $1', [s.ord]);
+      if (ord.rows.length === 0) {
+        const ordRes = await query(
+          `INSERT INTO orders (order_number, customer_id, order_date, description, remarks, created_at)
+           VALUES ($1, $2, $3, $4, $5, $6)
+           RETURNING id`,
+          [s.ord, s.id, time.split('T')[0], s.desc, s.remarks, time]
+        );
 
-        // Add video placeholder
-        db.prepare(`
-          INSERT INTO order_videos (order_id, order_number, video_name, upload_status, file_size, duration_seconds, mime_type, created_at)
-          VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-        `).run(ordRes.lastInsertRowid, s.ord, `Order Video_${s.ord}.mp4`, 'uploaded', 4820000, 24, 'video/mp4', time);
+        await query(
+          `INSERT INTO order_videos (order_id, order_number, video_name, upload_status, file_size, duration_seconds, mime_type, created_at)
+           VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
+          [ordRes.rows[0].id, s.ord, `Order Video_${s.ord}.mp4`, 'uploaded', 4820000, 24, 'video/mp4', time]
+        );
       }
     }
 

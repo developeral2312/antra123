@@ -1,12 +1,37 @@
 const PDFDocument = require('pdfkit');
 
 /**
+ * Resolve public base URL from incoming request headers or env
+ */
+function getRequestBaseUrl(req) {
+  if (process.env.APP_URL) {
+    return process.env.APP_URL.replace(/\/+$/, '');
+  }
+  if (req && req.headers) {
+    const forwardedHost = req.headers.get('x-forwarded-host');
+    const host = forwardedHost || req.headers.get('host');
+    if (host) {
+      const cleanHost = host.split(',')[0].trim();
+      const forwardedProto = req.headers.get('x-forwarded-proto');
+      const isHttpsHost =
+        forwardedProto === 'https' ||
+        cleanHost.endsWith('.ts.net') ||
+        cleanHost.endsWith('.trycloudflare.com');
+      const proto = isHttpsHost ? 'https' : (forwardedProto || 'http');
+      return `${proto}://${cleanHost}`;
+    }
+  }
+  return `http://localhost:${process.env.PORT || 3000}`;
+}
+
+/**
  * Generate Customer Details PDF
  * @param {Object} customer - Customer data
  * @param {Array} orders - List of orders for this customer
+ * @param {string} baseUrl - Base URL for absolute video links
  * @returns {Promise<Buffer>}
  */
-function generateCustomerPdf(customer, orders = []) {
+function generateCustomerPdf(customer, orders = [], baseUrl = '') {
   return new Promise((resolve, reject) => {
     try {
       const doc = new PDFDocument({ margin: 40, size: 'A4' });
@@ -15,7 +40,11 @@ function generateCustomerPdf(customer, orders = []) {
       doc.on('data', buffers.push.bind(buffers));
       doc.on('end', () => resolve(Buffer.concat(buffers)));
 
-      const baseUrl = process.env.APP_URL || `http://localhost:${process.env.PORT || 3000}`;
+      const resolvedBaseUrl = (
+        baseUrl ||
+        process.env.APP_URL ||
+        `http://localhost:${process.env.PORT || 3000}`
+      ).replace(/\/+$/, '');
 
       // Colors
       const primaryColor = '#1d4ed8'; // Blue-700
@@ -98,7 +127,8 @@ function generateCustomerPdf(customer, orders = []) {
           doc.rect(40, tableY, doc.page.width - 80, 26).fill(rowBg);
           doc.rect(40, tableY, doc.page.width - 80, 26).stroke('#e2e8f0');
 
-          const ordVideoLink = `${baseUrl}/api/videos/stream/${ord.order_number}`;
+          const ordVideoTarget = ord.video_id || ord.order_number;
+          const ordVideoLink = `${resolvedBaseUrl}/api/videos/stream/${encodeURIComponent(ordVideoTarget)}`;
 
           doc.fillColor(primaryColor).fontSize(9).font('Helvetica-Bold')
              .text(ord.order_number, 50, tableY + 8, {
@@ -130,7 +160,7 @@ function generateCustomerPdf(customer, orders = []) {
       doc.rect(40, footerY - 10, doc.page.width - 80, 1).fill('#cbd5e1');
       doc.fillColor(grayText).fontSize(8).font('Helvetica')
          .text('CONFIDENTIAL - Antra Order Management & Video Verification System', 40, footerY)
-         .text('Permanent Cloud Archive on Google Drive • Customer Record Document', 40, footerY + 14);
+         .text('Permanent Verified Archive • Customer Record Document', 40, footerY + 14);
 
       doc.end();
     } catch (err) {
@@ -146,7 +176,7 @@ function generateCustomerPdf(customer, orders = []) {
  * @param {Object} video - Video record if any
  * @returns {Promise<Buffer>}
  */
-function generateOrderPdf(order, customer, video = null) {
+function generateOrderPdf(order, customer, video = null, baseUrl = '') {
   return new Promise((resolve, reject) => {
     try {
       const doc = new PDFDocument({ margin: 40, size: 'A4' });
@@ -160,16 +190,19 @@ function generateOrderPdf(order, customer, video = null) {
       const grayText = '#4b5563';
       const lightBg = '#f1f5f9';
 
-      const baseUrl = process.env.APP_URL || `http://localhost:${process.env.PORT || 3000}`;
+      const resolvedBaseUrl = (
+        baseUrl ||
+        process.env.APP_URL ||
+        `http://localhost:${process.env.PORT || 3000}`
+      ).replace(/\/+$/, '');
 
-      // Resolve Verification Video Link (Google Drive view link or local stream endpoint)
+      // Resolve Verification Video Link (external URL or local stream endpoint)
       let videoLink = null;
       if (video?.video_url && typeof video.video_url === 'string' && video.video_url.startsWith('http')) {
         videoLink = video.video_url;
-      } else if (video?.google_drive_file_id && typeof video.google_drive_file_id === 'string' && !video.google_drive_file_id.startsWith('GDrive-') && video.google_drive_file_id !== 'local') {
-        videoLink = `https://drive.google.com/file/d/${video.google_drive_file_id}/view`;
       } else if (video?.id || order?.order_number) {
-        videoLink = `${baseUrl}/api/videos/stream/${video?.id || order.order_number}`;
+        const videoTarget = video?.id || order.order_number;
+        videoLink = `${resolvedBaseUrl}/api/videos/stream/${encodeURIComponent(videoTarget)}`;
       }
 
       // --- Header ---
@@ -238,7 +271,7 @@ function generateOrderPdf(order, customer, video = null) {
       doc.fillColor(secondaryColor).fontSize(13).font('Helvetica-Bold')
          .text('Verification Video Recording', 40, videoCardY);
 
-      const videoCardHeight = 100;
+      const videoCardHeight = 116;
       doc.rect(40, videoCardY + 20, doc.page.width - 80, videoCardHeight).fill('#f8fafc');
       doc.rect(40, videoCardY + 20, doc.page.width - 80, videoCardHeight).stroke('#cbd5e1');
 
@@ -265,19 +298,19 @@ function generateOrderPdf(order, customer, video = null) {
       const statusColor = uploadStatus.toLowerCase() === 'uploaded' ? '#16a34a' : '#2563eb';
       doc.font('Helvetica-Bold').fillColor(statusColor).text(uploadStatus, 435, rowY);
 
-      // Row 2: Drive File ID & Duration
+      // Row 2: Storage Record ID & Duration
       rowY += 23;
-      doc.font('Helvetica-Bold').fillColor(grayText).text('Drive File ID:', 55, rowY);
-      const driveId = video?.google_drive_file_id || 'GDrive-Sync-Active';
-      if (videoLink && driveId !== 'GDrive-Sync-Active') {
-        doc.font('Helvetica').fillColor(primaryColor).text(driveId, 135, rowY, {
+      doc.font('Helvetica-Bold').fillColor(grayText).text('Storage Record:', 55, rowY);
+      const recordId = video?.id ? `VID-${video.id}` : `ORD-${order.order_number}`;
+      if (videoLink) {
+        doc.font('Helvetica').fillColor(primaryColor).text(recordId, 135, rowY, {
           width: 195,
           ellipsis: true,
           link: videoLink,
           underline: true
         });
       } else {
-        doc.font('Helvetica').fillColor(secondaryColor).text(driveId, 135, rowY, {
+        doc.font('Helvetica').fillColor(secondaryColor).text(recordId, 135, rowY, {
           width: 195,
           ellipsis: true
         });
@@ -295,6 +328,12 @@ function generateOrderPdf(order, customer, video = null) {
           link: videoLink,
           underline: true
         });
+        doc.font('Helvetica').fillColor(primaryColor).fontSize(8).text(videoLink, 150, rowY + 14, {
+          width: 390,
+          link: videoLink,
+          underline: true
+        });
+        doc.fontSize(10);
       } else {
         doc.font('Helvetica').fillColor(grayText).text('No video recording attached.', 150, rowY);
       }
@@ -330,7 +369,7 @@ function generateOrderPdf(order, customer, video = null) {
       const footerY = doc.page.height - 55;
       doc.rect(40, footerY - 10, doc.page.width - 80, 1).fill('#cbd5e1');
       doc.fillColor(grayText).fontSize(8).font('Helvetica')
-         .text('Antra Customer Order Management System • Secure Google Drive Storage', 40, footerY)
+         .text('Antra Customer Order Management System • Secure PostgreSQL Storage', 40, footerY)
          .text(`Order Reference: ${order.order_number} • Customer: ${customer.customer_id}`, 40, footerY + 12);
 
       doc.end();
@@ -341,6 +380,7 @@ function generateOrderPdf(order, customer, video = null) {
 }
 
 module.exports = {
+  getRequestBaseUrl,
   generateCustomerPdf,
   generateOrderPdf
 };

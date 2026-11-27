@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { getAuthUser } from '@/lib/api-auth';
 const bcrypt = require('bcryptjs');
-const { getDb } = require('@/lib/db');
+const { query } = require('@/lib/db');
 
 export async function PUT(req) {
   const user = getAuthUser();
@@ -12,8 +12,8 @@ export async function PUT(req) {
   try {
     const { name, email, current_password, new_password } = await req.json();
 
-    const db = getDb();
-    const admin = db.prepare('SELECT * FROM admin_users WHERE id = ?').get(user.id);
+    const adminRes = await query('SELECT * FROM admin_users WHERE id = $1', [user.id]);
+    const admin = adminRes.rows[0];
 
     if (!admin) {
       return NextResponse.json({ error: 'Admin account not found' }, { status: 404 });
@@ -31,15 +31,14 @@ export async function PUT(req) {
 
       const salt = bcrypt.genSaltSync(10);
       const newHash = bcrypt.hashSync(new_password, salt);
-      db.prepare('UPDATE admin_users SET password_hash = ? WHERE id = ?').run(newHash, admin.id);
+      await query('UPDATE admin_users SET password_hash = $1 WHERE id = $2', [newHash, admin.id]);
     }
 
     if (name || email) {
-      db.prepare(`
-        UPDATE admin_users 
-        SET name = ?, email = ?
-        WHERE id = ?
-      `).run(name || admin.name, email ? email.toLowerCase() : admin.email, admin.id);
+      await query(
+        `UPDATE admin_users SET name = $1, email = $2 WHERE id = $3`,
+        [name || admin.name, email ? email.toLowerCase() : admin.email, admin.id]
+      );
     }
 
     return NextResponse.json({

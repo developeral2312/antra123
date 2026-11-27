@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
 const bcrypt = require('bcryptjs');
-const { getDb } = require('@/lib/db');
+const { query } = require('@/lib/db');
 const { signToken, COOKIE_NAME } = require('@/lib/auth');
 
 export async function POST(req) {
@@ -12,8 +12,11 @@ export async function POST(req) {
       return NextResponse.json({ error: 'Email and password are required' }, { status: 400 });
     }
 
-    const db = getDb();
-    const user = db.prepare('SELECT * FROM admin_users WHERE email = ?').get(email.trim().toLowerCase());
+    const userRes = await query(
+      'SELECT * FROM admin_users WHERE email = $1',
+      [email.trim().toLowerCase()]
+    );
+    const user = userRes.rows[0];
 
     if (!user) {
       return NextResponse.json({ error: 'Invalid email or password' }, { status: 401 });

@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { getAuthUser } from '@/lib/api-auth';
-const { getDb } = require('@/lib/db');
+const { query } = require('@/lib/db');
 
 export async function GET() {
   const user = getAuthUser();
@@ -8,8 +8,11 @@ export async function GET() {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
-  const db = getDb();
-  const dbUser = db.prepare('SELECT id, email, name, role, created_at FROM admin_users WHERE id = ?').get(user.id);
+  const res = await query(
+    'SELECT id, email, name, role, created_at FROM admin_users WHERE id = $1',
+    [user.id]
+  );
+  const dbUser = res.rows[0];
   if (!dbUser) {
     return NextResponse.json({ error: 'User not found' }, { status: 404 });
   }

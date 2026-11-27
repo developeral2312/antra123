@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { getAuthUser } from '@/lib/api-auth';
-const { getDb } = require('@/lib/db');
+const { query } = require('@/lib/db');
 
 export async function GET(req) {
   const user = getAuthUser();
@@ -15,23 +15,27 @@ export async function GET(req) {
     return NextResponse.json({ customers: [], orders: [] });
   }
 
-  const db = getDb();
   const pattern = `%${q.trim()}%`;
 
-  const customers = db.prepare(`
-    SELECT id, customer_id, customer_name, phone_number, address, created_at
-    FROM customers
-    WHERE customer_id LIKE ? OR customer_name LIKE ? OR phone_number LIKE ?
-    LIMIT 10
-  `).all(pattern, pattern, pattern);
+  const customersRes = await query(
+    `SELECT id, customer_id, customer_name, phone_number, address, created_at
+     FROM customers
+     WHERE customer_id ILIKE $1 OR customer_name ILIKE $1 OR phone_number ILIKE $1
+     LIMIT 10`,
+    [pattern]
+  );
 
-  const orders = db.prepare(`
-    SELECT o.id, o.order_number, o.customer_id, o.order_date, o.description, c.customer_name
-    FROM orders o
-    JOIN customers c ON o.customer_id = c.customer_id
-    WHERE o.order_number LIKE ? OR o.customer_id LIKE ? OR c.customer_name LIKE ? OR o.description LIKE ?
-    LIMIT 10
-  `).all(pattern, pattern, pattern, pattern);
+  const ordersRes = await query(
+    `SELECT o.id, o.order_number, o.customer_id, o.order_date, o.description, c.customer_name
+     FROM orders o
+     JOIN customers c ON o.customer_id = c.customer_id
+     WHERE o.order_number ILIKE $1 OR o.customer_id ILIKE $1 OR c.customer_name ILIKE $1 OR o.description ILIKE $1
+     LIMIT 10`,
+    [pattern]
+  );
 
-  return NextResponse.json({ customers, orders });
+  return NextResponse.json({
+    customers: customersRes.rows,
+    orders: ordersRes.rows
+  });
 }

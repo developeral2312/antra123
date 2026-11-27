@@ -16,7 +16,7 @@ export default function VideoPlayerModal({ videoId, orderNumber, onClose }) {
               <h3 className="text-sm font-bold text-white">
                 Order Verification Video • {orderNumber ? `#${orderNumber}` : ''}
               </h3>
-              <p className="text-[11px] text-slate-400">Streamed from Antra Cloud Storage Archive</p>
+              <p className="text-[11px] text-slate-400">Streamed from Antra Verified Storage Archive</p>
             </div>
           </div>
 

@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { getAuthUser } from '@/lib/api-auth';
-const { getDb } = require('@/lib/db');
+const { query } = require('@/lib/db');
 
 export async function GET(req) {
   const user = getAuthUser();
@@ -11,14 +11,12 @@ export async function GET(req) {
   const { searchParams } = new URL(req.url);
   const search = searchParams.get('search') || '';
 
-  const db = getDb();
-  let query = `
+  let sql = `
     SELECT 
       v.id,
       v.order_id,
       v.order_number,
       v.video_name,
-      v.google_drive_file_id,
       v.video_url,
       v.upload_status,
       v.file_size,
@@ -38,13 +36,12 @@ export async function GET(req) {
   const params = [];
 
   if (search) {
-    query += ` AND (v.order_number LIKE ? OR o.customer_id LIKE ? OR c.customer_name LIKE ?)`;
-    const pattern = `%${search}%`;
-    params.push(pattern, pattern, pattern);
+    params.push(`%${search}%`);
+    sql += ` AND (v.order_number ILIKE $1 OR o.customer_id ILIKE $1 OR c.customer_name ILIKE $1)`;
   }
 
-  query += ` ORDER BY v.id DESC`;
+  sql += ` ORDER BY v.id DESC`;
 
-  const videos = db.prepare(query).all(...params);
-  return NextResponse.json({ videos });
+  const res = await query(sql, params);
+  return NextResponse.json({ videos: res.rows });
 }

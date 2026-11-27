@@ -21,7 +21,7 @@ export default function MobileNav({
   activeTab, 
   setActiveTab, 
   onLogout,
-  driveStatus,
+  dbStatus,
   user 
 }) {
   const menuSections = [
@@ -146,7 +146,7 @@ export default function MobileNav({
               >
                 <div className="flex items-center gap-2">
                   <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
-                  <span className="font-semibold text-[11px] text-emerald-300">Google Drive Sync</span>
+                  <span className="font-semibold text-[11px] text-emerald-300">PostgreSQL Active</span>
                 </div>
                 <div className="w-4 h-4 rounded-full bg-emerald-500/20 flex items-center justify-center shrink-0">
                   <Check className="w-2.5 h-2.5 text-emerald-300" />

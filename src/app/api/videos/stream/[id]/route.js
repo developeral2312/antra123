@@ -1,13 +1,19 @@
 import fs from 'fs';
-const { getDb } = require('@/lib/db');
+const { query } = require('@/lib/db');
+
+function parseNumericId(val) {
+  if (!/^\d+$/.test(String(val))) return -1;
+  const num = Number(val);
+  return Number.isSafeInteger(num) && num >= 0 && num <= 2147483647 ? num : -1;
+}
 
 export async function GET(req, { params }) {
   const videoId = params.id;
-  const db = getDb();
-
-  const video = db.prepare(`
-    SELECT * FROM order_videos WHERE id = ? OR order_number = ?
-  `).get(videoId, videoId);
+  const res = await query(
+    `SELECT * FROM order_videos WHERE id = $1 OR order_number = $2`,
+    [parseNumericId(videoId), videoId]
+  );
+  const video = res.rows[0];
 
   if (!video || !video.local_path || !fs.existsSync(video.local_path)) {
     return new Response('Video file not found', { status: 404 });
@@ -27,7 +33,6 @@ export async function GET(req, { params }) {
     const chunksize = (end - start) + 1;
     const file = fs.createReadStream(filePath, { start, end });
 
-    // Convert Node ReadStream to Web ReadableStream
     const readable = new ReadableStream({
       start(controller) {
         file.on('data', chunk => controller.enqueue(chunk));
@@ -58,6 +63,7 @@ export async function GET(req, { params }) {
     return new Response(readable, {
       status: 200,
       headers: {
+        'Accept-Ranges': 'bytes',
         'Content-Length': fileSize.toString(),
         'Content-Type': contentType,
       }

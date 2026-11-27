@@ -1,8 +1,8 @@
 # Antra - Customer Order Management & Video Recording System
 
-**Antra** is an enterprise-grade Customer Order Management web application with in-browser camera video recording, automated PDF dossier generation, and official Google Drive API v3 cloud storage synchronization.
+**Antra** is an enterprise-grade Customer Order Management web application with in-browser camera video recording, automated PDF dossier generation, and a PostgreSQL relational database.
 
-Designed with a modern SaaS dashboard, mobile-first responsiveness (Android Chrome, iOS Safari, tablets, and desktop), and a secure SQLite relational database.
+Designed with a modern SaaS dashboard, mobile-first responsiveness (Android Chrome, iOS Safari, tablets, and desktop), and reliable local verified file archiving.
 
 ---
 
@@ -15,9 +15,9 @@ Designed with a modern SaaS dashboard, mobile-first responsiveness (Android Chro
   - Pause, resume, stop, and retake controls.
   - Option to upload existing video files from phone gallery or desktop.
   - Video upload progress bar.
-- **Automated Google Drive Folder Hierarchy**:
+- **Automated Local Storage Hierarchy**:
   ```
-  CUSTOMER DATABASE
+  storage/CUSTOMER DATABASE
       |
       |---- CUSTOMER001
       |       |---- Customer Details.pdf
@@ -31,12 +31,9 @@ Designed with a modern SaaS dashboard, mobile-first responsiveness (Android Chro
       |                       |---- Order Video.mp4
       |                       |---- Order Details.pdf
   ```
-  - Re-uses existing customer folder if customer exists (supports multiple orders under one Customer ID).
-  - Uploads video recordings directly to the appropriate order subfolder.
-  - Saves Google Drive File and Folder IDs directly in the relational database.
 - **Server-Side PDF Generation**:
   - Automatically generates branded `Customer Details.pdf` and `Order Details.pdf` with digital verification stamps and timestamps.
-- **Secure Relational Database**: SQLite with Write-Ahead Logging (WAL) for high performance and integrity, tracking customers, orders, videos, activity logs, and settings.
+- **PostgreSQL Relational Database**: Powered by `pg` connection pooling, tracking customers, orders, videos, activity logs, admin users, and settings with automatic schema initialization.
 - **Admin Security & Authentication**: Encrypted bcrypt passwords, HTTP-only JWT sessions, and protected API endpoints.
 - **Mobile-First Responsive Layout**: Desktop sidebar navigation with mobile hamburger menu and quick-access bottom navigation bar.
 
@@ -46,8 +43,8 @@ Designed with a modern SaaS dashboard, mobile-first responsiveness (Android Chro
 
 - **Frontend**: Next.js 14, React 18, Tailwind CSS, Lucide Icons
 - **Backend**: Next.js API Routes (Node.js runtime)
-- **Database**: SQLite (via `better-sqlite3` with WAL mode)
-- **Cloud Storage**: Google Drive API v3 (OAuth 2.0 & Service Account support)
+- **Database**: PostgreSQL (via `pg` connection pool)
+- **Storage**: Organized local file & video storage (`storage/CUSTOMER DATABASE`) with HTTP 206 byte-range streaming
 - **PDF Engine**: PDFKit
 - **Media Capture**: Browser MediaDevices API & MediaRecorder API
 
@@ -58,30 +55,40 @@ Designed with a modern SaaS dashboard, mobile-first responsiveness (Android Chro
 ### 1. Prerequisites
 - Node.js 18+ or 20+
 - npm 9+
+- PostgreSQL 14+
 
 ### 2. Install Dependencies
 ```bash
-cd antra
+cd antra123
 npm install
 ```
 
 ### 3. Environment Variables
-Copy `.env.example` to `.env`:
+Copy `.env.example` to `.env` and configure your PostgreSQL connection string:
 ```bash
 cp .env.example .env
+```
+```env
+DATABASE_URL=postgresql://postgres:YOUR_PASSWORD@localhost:5432/company_database
+PGHOST=localhost
+PGPORT=5432
+PGUSER=postgres
+PGPASSWORD=YOUR_PASSWORD
+PGDATABASE=company_database
+PGSCHEMA=antra
 ```
 
 ### 4. Start Development Server
 ```bash
 npm run dev
 ```
-Open [http://localhost:3000](http://localhost:3000) in your browser.
+Open [http://localhost:3000](http://localhost:3000) in your browser. The database, schema, tables, and default admin user are created automatically on startup.
 
 ---
 
 ## 🔐 Default Administrator Login
 
-When first launched, Antra automatically seeds an administrator account:
+When first launched, Antra automatically seeds an administrator account in PostgreSQL:
 - **Email**: `admin@antra.com`
 - **Password**: `admin123`
 
@@ -89,54 +96,11 @@ You can change your password anytime under **Settings -> Administrator Profile &
 
 ---
 
-## ☁️ Google Cloud & Google Drive API v3 Setup Guide
-
-Antra works immediately out of the box with automated local storage hierarchy mirroring Google Drive. To activate live Google Drive cloud synchronization:
-
-### Step 1: Create a Google Cloud Project
-1. Go to the [Google Cloud Console](https://console.cloud.google.com/).
-2. Click **Select a project** -> **New Project**.
-3. Name it **Antra Customer Management** and click **Create**.
-
-### Step 2: Enable Google Drive API
-1. In Google Cloud Console, navigate to **APIs & Services** -> **Library**.
-2. Search for **Google Drive API**.
-3. Click on **Google Drive API** and click **Enable**.
-
-### Step 3: Configure OAuth Consent Screen
-1. Go to **APIs & Services** -> **OAuth consent screen**.
-2. Select **External** (or **Internal** if using Google Workspace).
-3. Fill in App Name: `Antra`, User support email, and Developer email.
-4. Under **Scopes**, add `https://www.googleapis.com/auth/drive` or `https://www.googleapis.com/auth/drive.file`.
-5. Under **Test users**, add your Google email address.
-
-### Step 4: Create OAuth 2.0 Credentials
-1. Go to **APIs & Services** -> **Credentials**.
-2. Click **Create Credentials** -> **OAuth client ID**.
-3. Application type: **Web application** (or **Desktop app / Other** for easy manual token generation).
-4. Save your **Client ID** and **Client Secret**.
-
-### Step 5: Configure Credentials in Antra
-You can configure Google Drive in two ways:
-1. **Via Antra Settings UI**: Open **Settings -> Google Drive API v3 Integration**, enter your Client ID, Secret, and Refresh Token, then click **Test Connection** & **Save Drive Settings**.
-2. **Via `.env` file**:
-   ```env
-   GOOGLE_CLIENT_ID=your-client-id.apps.googleusercontent.com
-   GOOGLE_CLIENT_SECRET=your-client-secret
-   GOOGLE_REFRESH_TOKEN=your-refresh-token
-   GOOGLE_ROOT_FOLDER_NAME=CUSTOMER DATABASE
-   ```
-
-*(Alternatively, you can paste a Google Service Account JSON directly in the Settings page).*
-
----
-
 ## 📁 Directory Structure
 
 ```
-antra/
-├── data/                      # Relational SQLite database (antra.sqlite)
-├── storage/                   # Local file & video storage mirror
+antra123/
+├── storage/                   # Local file & video storage archive
 │   └── CUSTOMER DATABASE/
 │       └── CUST001/
 │           ├── Customer Details.pdf
@@ -153,7 +117,7 @@ antra/
 │   │   │   ├── orders/        # Order creation, submission workflow, PDF
 │   │   │   ├── videos/        # Video streaming with byte ranges (HTTP 206)
 │   │   │   ├── dashboard/     # Real-time statistics & trends
-│   │   │   └── settings/      # Drive config, profile, DB diagnostics
+│   │   │   └── settings/      # Admin profile & PostgreSQL diagnostics
 │   │   ├── globals.css        # Tailwind styling & animations
 │   │   ├── layout.js          # Root layout & meta tags
 │   │   └── page.js            # Main dashboard shell
@@ -168,13 +132,12 @@ antra/
 │   │   ├── AllOrdersView.js   # Orders table with status filters
 │   │   ├── VideoGalleryView.js# Grid of verification videos
 │   │   ├── SearchCustomerView.js # Unified instant search
-│   │   ├── SettingsView.js    # Drive configuration & DB diagnostics
+│   │   ├── SettingsView.js    # Admin profile & PostgreSQL diagnostics
 │   │   └── VideoPlayerModal.js# Video playback modal
 │   └── lib/                   # Backend engines & helpers
-│       ├── db.js              # SQLite connection & schema initialization
+│       ├── db.js              # PostgreSQL pool & schema initialization
 │       ├── auth.js            # JWT signing & cookie session handling
-│       ├── drive.js           # Google Drive API v3 client & folder hierarchy
-│       ├── storage.js         # File hierarchy coordinator
+│       ├── storage.js         # Local file hierarchy coordinator
 │       └── pdf.js             # Branded PDF dossier & receipt generator
 ├── .env.example
 ├── package.json

@@ -40,7 +40,7 @@ export default function Header({ onToggleMobileNav, recentActivity = [] }) {
             Customer Order Management System
           </h1>
           <p className="text-[11px] text-slate-500 hidden sm:block">
-            Manage Customers • Record Orders • Store in Google Drive
+            Manage Customers • Record Orders • PostgreSQL Verified Storage
           </p>
         </div>
       </div>

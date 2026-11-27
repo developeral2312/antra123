@@ -19,7 +19,7 @@ export default function Home() {
   const [activeTab, setActiveTab] = useState('dashboard');
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
 
-  // Dashboard Stats & Google Drive status
+  // Dashboard Stats & Database status
   const [stats, setStats] = useState(null);
   const [statsLoading, setStatsLoading] = useState(false);
 
@@ -99,12 +99,12 @@ export default function Home() {
         activeTab={activeTab}
         setActiveTab={setActiveTab}
         onLogout={handleLogout}
-        driveStatus={stats?.googleDrive}
+        dbStatus={stats?.database}
         user={user}
       />
 
       {/* Main Content Area */}
-      <div className="flex-1 h-screen overflow-y-auto flex flex-col min-w-0 pb-16 lg:pb-0">
+      <div className="flex-1 h-screen overflow-y-auto flex flex-col min-w-0 pb-24 lg:pb-0">
         <Header
           onToggleMobileNav={() => setMobileNavOpen(true)}
           recentActivity={stats?.recentActivity || []}
@@ -132,6 +132,8 @@ export default function Home() {
 
           {activeTab === 'customers' && (
             <CustomerRecordsView
+              initialCustomerId={viewCustomerId}
+              onClearInitialCustomer={() => setViewCustomerId(null)}
               onViewCustomerDetails={handleViewCustomer}
               onPlayVideo={handlePlayVideo}
               onAddOrderForCustomer={(cId) => {
@@ -177,7 +179,7 @@ export default function Home() {
         activeTab={activeTab}
         setActiveTab={setActiveTab}
         onLogout={handleLogout}
-        driveStatus={stats?.googleDrive}
+        dbStatus={stats?.database}
         user={user}
       />
 

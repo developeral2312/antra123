@@ -8,7 +8,6 @@ import {
   FileText, 
   Play, 
   Download, 
-  ExternalLink, 
   Edit3, 
   Eye, 
   CheckCircle2, 
@@ -19,7 +18,13 @@ import {
   Clock
 } from 'lucide-react';
 
-export default function CustomerRecordsView({ onViewCustomerDetails, onPlayVideo, onAddOrderForCustomer }) {
+export default function CustomerRecordsView({
+  initialCustomerId,
+  onClearInitialCustomer,
+  onViewCustomerDetails,
+  onPlayVideo,
+  onAddOrderForCustomer
+}) {
   const [customers, setCustomers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
@@ -31,6 +36,7 @@ export default function CustomerRecordsView({ onViewCustomerDetails, onPlayVideo
   const [selectedCustomer, setSelectedCustomer] = useState(null);
   const [customerOrders, setCustomerOrders] = useState([]);
   const [modalLoading, setModalLoading] = useState(false);
+  const [modalError, setModalError] = useState('');
 
   // Edit Customer Modal State
   const [isEditing, setIsEditing] = useState(false);
@@ -65,20 +71,39 @@ export default function CustomerRecordsView({ onViewCustomerDetails, onPlayVideo
   };
 
   // Open Customer Detail Modal
-  const openCustomerModal = (customerId) => {
+  const openCustomerModal = async (customerId) => {
+    if (!customerId) return;
     setModalLoading(true);
-    fetch(`/api/customers/${customerId}`)
-      .then(res => res.json())
-      .then(data => {
-        setSelectedCustomer(data.customer);
-        setCustomerOrders(data.orders || []);
-        setEditName(data.customer.customer_name);
-        setEditPhone(data.customer.phone_number);
-        setEditAddress(data.customer.address);
-      })
-      .catch(e => console.error(e))
-      .finally(() => setModalLoading(false));
+    setModalError('');
+    setIsEditing(false);
+    try {
+      const res = await fetch(`/api/customers/${encodeURIComponent(customerId)}`);
+      const rawText = await res.text();
+      const data = rawText ? JSON.parse(rawText) : {};
+      if (!res.ok || !data.customer) {
+        throw new Error(data.error || 'Could not load customer details');
+      }
+      setSelectedCustomer(data.customer);
+      setCustomerOrders(data.orders || []);
+      setEditName(data.customer.customer_name || '');
+      setEditPhone(data.customer.phone_number || '');
+      setEditAddress(data.customer.address || '');
+    } catch (e) {
+      console.error('Error loading customer modal:', e);
+      setModalError(e.message || 'Failed to load customer details');
+    } finally {
+      setModalLoading(false);
+    }
   };
+
+  useEffect(() => {
+    if (initialCustomerId) {
+      openCustomerModal(initialCustomerId);
+      if (onClearInitialCustomer) {
+        onClearInitialCustomer();
+      }
+    }
+  }, [initialCustomerId]);
 
   // Save Edit
   const handleSaveEdit = async () => {
@@ -204,8 +229,9 @@ export default function CustomerRecordsView({ onViewCustomerDetails, onPlayVideo
                     </a>
 
                     <button
+                      type="button"
                       onClick={() => openCustomerModal(c.customer_id)}
-                      className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-blue-50 hover:bg-blue-100 text-blue-600 font-bold text-xs transition-colors"
+                      className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-blue-50 hover:bg-blue-100 active:bg-blue-200 text-blue-600 font-bold text-xs transition-colors cursor-pointer"
                     >
                       <Eye className="w-3.5 h-3.5" />
                       <span>View Details</span>
@@ -245,8 +271,9 @@ export default function CustomerRecordsView({ onViewCustomerDetails, onPlayVideo
                       <td className="py-3.5 px-4 text-right">
                         <div className="flex items-center justify-end gap-2">
                           <button
+                            type="button"
                             onClick={() => openCustomerModal(c.customer_id)}
-                            className="px-3 py-1.5 bg-blue-50 hover:bg-blue-100 text-blue-600 rounded-lg text-xs font-bold transition-colors flex items-center gap-1"
+                            className="px-3 py-1.5 bg-blue-50 hover:bg-blue-100 active:bg-blue-200 text-blue-600 rounded-lg text-xs font-bold transition-colors flex items-center gap-1 cursor-pointer"
                           >
                             <Eye className="w-3.5 h-3.5" />
                             <span>View Details</span>
@@ -262,10 +289,32 @@ export default function CustomerRecordsView({ onViewCustomerDetails, onPlayVideo
         )}
       </div>
 
+      {/* Loading / Error State Modal */}
+      {(modalLoading || modalError) && !selectedCustomer && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm">
+          <div className="bg-white rounded-2xl max-w-sm w-full p-6 text-center shadow-2xl border border-slate-100 space-y-3">
+            {modalLoading ? (
+              <p className="text-sm font-bold text-slate-700">Loading customer details...</p>
+            ) : (
+              <>
+                <p className="text-sm font-bold text-rose-600">{modalError}</p>
+                <button
+                  type="button"
+                  onClick={() => setModalError('')}
+                  className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-bold"
+                >
+                  Close
+                </button>
+              </>
+            )}
+          </div>
+        </div>
+      )}
+
       {/* Customer Full Details Modal */}
       {selectedCustomer && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs">
-          <div className="bg-white rounded-3xl max-w-3xl w-full max-h-[90vh] overflow-y-auto shadow-2xl border border-slate-100 p-6 sm:p-8 space-y-6">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-900/60 backdrop-blur-sm">
+          <div className="bg-white rounded-3xl max-w-3xl w-full max-h-[85vh] overflow-y-auto shadow-2xl border border-slate-100 p-5 sm:p-8 space-y-6">
             {/* Modal Header */}
             <div className="flex items-start justify-between border-b border-slate-100 pb-4">
               <div className="flex items-center gap-3">
@@ -301,21 +350,9 @@ export default function CustomerRecordsView({ onViewCustomerDetails, onPlayVideo
                 <span>Download Customer Dossier (PDF)</span>
               </a>
 
-              {selectedCustomer.google_drive_folder_id ? (
-                <a
-                  href={`https://drive.google.com/drive/folders/${selectedCustomer.google_drive_folder_id}`}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="px-3.5 py-2 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 rounded-xl text-xs font-bold flex items-center gap-1.5 transition-colors"
-                >
-                  <ExternalLink className="w-4 h-4 text-emerald-600" />
-                  <span>Open in Google Drive</span>
-                </a>
-              ) : (
-                <span className="px-3 py-1.5 bg-slate-50 text-slate-500 rounded-xl text-xs font-medium border border-slate-200">
-                  📁 Stored in CUSTOMER DATABASE/{selectedCustomer.customer_id}
-                </span>
-              )}
+              <span className="px-3 py-1.5 bg-slate-50 text-slate-500 rounded-xl text-xs font-medium border border-slate-200">
+                📁 Stored in CUSTOMER DATABASE/{selectedCustomer.customer_id}
+              </span>
 
               <button
                 onClick={() => setIsEditing(!isEditing)}

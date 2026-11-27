@@ -12,7 +12,8 @@ import {
   AlertCircle,
   CheckCircle,
   FileVideo,
-  Eye
+  Eye,
+  ArrowLeft
 } from 'lucide-react';
 
 export default function CameraRecorder({ onVideoReady, uploadProgress, isSubmitting }) {
@@ -32,6 +33,7 @@ export default function CameraRecorder({ onVideoReady, uploadProgress, isSubmitt
   const mediaRecorderRef = useRef(null);
   const recordedChunksRef = useRef([]);
   const timerIntervalRef = useRef(null);
+  const durationRef = useRef(0);
   const fileInputRef = useRef(null);
 
   // Check available cameras
@@ -76,12 +78,13 @@ export default function CameraRecorder({ onVideoReady, uploadProgress, isSubmitt
     }
 
     try {
-      // Try facingMode: environment first on mobile, fallback to generic
+      // Compact mobile-friendly resolution so file size stays reasonable
       let constraints = {
         video: {
           facingMode: mode,
-          width: { ideal: 1280 },
-          height: { ideal: 720 }
+          width: { ideal: 854 },
+          height: { ideal: 480 },
+          frameRate: { ideal: 24, max: 30 }
         },
         audio: true
       };
@@ -131,6 +134,7 @@ export default function CameraRecorder({ onVideoReady, uploadProgress, isSubmitt
     if (!mediaStreamRef.current) return;
     setErrorMessage('');
     recordedChunksRef.current = [];
+    durationRef.current = 0;
     setDuration(0);
 
     // Pick best supported MIME type
@@ -150,8 +154,17 @@ export default function CameraRecorder({ onVideoReady, uploadProgress, isSubmitt
     }
 
     try {
-      const options = selectedMime ? { mimeType: selectedMime } : {};
-      const recorder = new MediaRecorder(mediaStreamRef.current, options);
+      const options = {
+        ...(selectedMime ? { mimeType: selectedMime } : {}),
+        videoBitsPerSecond: 1000000,
+        audioBitsPerSecond: 64000
+      };
+      let recorder;
+      try {
+        recorder = new MediaRecorder(mediaStreamRef.current, options);
+      } catch {
+        recorder = new MediaRecorder(mediaStreamRef.current, selectedMime ? { mimeType: selectedMime } : {});
+      }
 
       recorder.ondataavailable = (event) => {
         if (event.data && event.data.size > 0) {
@@ -172,7 +185,7 @@ export default function CameraRecorder({ onVideoReady, uploadProgress, isSubmitt
         onVideoReady(blob, {
           name: `recorded_order_video_${Date.now()}.${mime.includes('mp4') ? 'mp4' : 'webm'}`,
           mimeType: mime,
-          duration: duration
+          duration: durationRef.current
         });
       };
 
@@ -183,7 +196,8 @@ export default function CameraRecorder({ onVideoReady, uploadProgress, isSubmitt
 
       // Start duration counter
       timerIntervalRef.current = setInterval(() => {
-        setDuration(prev => prev + 1);
+        durationRef.current += 1;
+        setDuration(durationRef.current);
       }, 1000);
     } catch (err) {
       console.error('Recorder error:', err);
@@ -202,7 +216,8 @@ export default function CameraRecorder({ onVideoReady, uploadProgress, isSubmitt
         mediaRecorderRef.current.resume();
         setIsPaused(false);
         timerIntervalRef.current = setInterval(() => {
-          setDuration(prev => prev + 1);
+          durationRef.current += 1;
+          setDuration(durationRef.current);
         }, 1000);
       }
     }
@@ -218,6 +233,26 @@ export default function CameraRecorder({ onVideoReady, uploadProgress, isSubmitt
     }
   };
 
+  // Close camera or clear preview and go back to form
+  const handleBack = () => {
+    if (isRecording) {
+      stopRecording();
+    }
+    stopStream();
+    if (previewUrl) {
+      URL.revokeObjectURL(previewUrl);
+    }
+    setCameraActive(false);
+    setRecordedBlob(null);
+    setPreviewUrl(null);
+    durationRef.current = 0;
+    setDuration(0);
+    setSelectedFileName('');
+    setErrorMessage('');
+    if (fileInputRef.current) fileInputRef.current.value = '';
+    onVideoReady(null, null);
+  };
+
   // Retake video
   const handleRetake = () => {
     if (previewUrl) {
@@ -225,6 +260,7 @@ export default function CameraRecorder({ onVideoReady, uploadProgress, isSubmitt
     }
     setRecordedBlob(null);
     setPreviewUrl(null);
+    durationRef.current = 0;
     setDuration(0);
     setSelectedFileName('');
     onVideoReady(null, null);
@@ -269,7 +305,7 @@ export default function CameraRecorder({ onVideoReady, uploadProgress, isSubmitt
             <span>Order Verification Video Recording</span>
           </h3>
           <p className="text-xs text-slate-500 mt-0.5">
-            Capture order assembly & packaging video. Saved permanently to Google Drive.
+            Capture order assembly & packaging video. Saved permanently to verified storage.
           </p>
         </div>
 
@@ -300,14 +336,14 @@ export default function CameraRecorder({ onVideoReady, uploadProgress, isSubmitt
       )}
 
       {/* Video Viewport Area */}
-      <div className="relative aspect-video max-h-[380px] w-full bg-slate-900 rounded-2xl overflow-hidden shadow-inner flex items-center justify-center border border-slate-800">
+      <div className="relative h-[260px] sm:h-[360px] w-full bg-slate-900 rounded-2xl overflow-hidden shadow-inner flex items-center justify-center border border-slate-800">
         {/* State 1: Live Camera Stream */}
         <video
           ref={videoLiveRef}
           autoPlay
           playsInline
           muted
-          className={`w-full h-full object-cover ${cameraActive && !previewUrl ? 'block' : 'hidden'}`}
+          className={`w-full h-full max-h-full object-contain bg-black ${cameraActive && !previewUrl ? 'block' : 'hidden'}`}
         />
 
         {/* State 2: Recorded Preview Video */}
@@ -316,7 +352,7 @@ export default function CameraRecorder({ onVideoReady, uploadProgress, isSubmitt
             src={previewUrl}
             controls
             playsInline
-            className="w-full h-full object-contain bg-black"
+            className="w-full h-full max-h-full object-contain bg-black"
           />
         )}
 
@@ -360,11 +396,26 @@ export default function CameraRecorder({ onVideoReady, uploadProgress, isSubmitt
             <span>{facingMode === 'environment' ? 'Back Camera (Rear)' : 'Front Camera (Selfie)'}</span>
           </button>
         )}
+        {/* Floating Back / Close Button (Always visible on mobile & desktop) */}
+        {(cameraActive || previewUrl) && !isRecording && !isSubmitting && (
+          <button
+            type="button"
+            onClick={handleBack}
+            className="absolute top-3.5 left-3.5 z-30 bg-slate-900/90 hover:bg-black text-white px-3 py-1.5 rounded-full flex items-center gap-1.5 text-xs font-bold backdrop-blur-md border border-slate-700 shadow-lg active:scale-95 transition-all"
+            title="Close / Go Back"
+          >
+            <ArrowLeft className="w-3.5 h-3.5" />
+            <span>Back</span>
+          </button>
+        )}
+
         {/* Preview Verified Badge */}
         {previewUrl && (
-          <div className="absolute top-4 left-4 bg-emerald-600/90 backdrop-blur-md text-white px-3 py-1.5 rounded-full flex items-center gap-1.5 text-xs font-semibold shadow-lg">
+          <div className="absolute top-3.5 right-3.5 z-20 bg-emerald-600/90 backdrop-blur-md text-white px-3 py-1.5 rounded-full flex items-center gap-1.5 text-xs font-semibold shadow-lg">
             <CheckCircle className="w-4 h-4" />
-            <span>Video Ready for Submission</span>
+            <span>
+              Ready {recordedBlob ? `(${(recordedBlob.size / (1024 * 1024)).toFixed(1)} MB)` : ''}
+            </span>
           </div>
         )}
       </div>
@@ -431,6 +482,19 @@ export default function CameraRecorder({ onVideoReady, uploadProgress, isSubmitt
               <span>Retake Video</span>
             </button>
           )}
+
+          {/* Back / Close Camera or Remove Video Button */}
+          {(cameraActive || previewUrl) && !isRecording && (
+            <button
+              type="button"
+              disabled={isSubmitting}
+              onClick={handleBack}
+              className="flex items-center gap-1.5 px-4 py-2.5 bg-white border border-slate-300 hover:bg-slate-100 text-slate-700 rounded-xl text-sm font-semibold transition-all disabled:opacity-50"
+            >
+              <ArrowLeft className="w-4 h-4" />
+              <span>{cameraActive ? 'Back / Close Camera' : 'Back / Remove Video'}</span>
+            </button>
+          )}
         </div>
 
         {/* Upload Existing Video Option */}
@@ -469,7 +533,7 @@ export default function CameraRecorder({ onVideoReady, uploadProgress, isSubmitt
           <div className="flex items-center justify-between text-xs">
             <span className="font-bold text-blue-700 flex items-center gap-2">
               <span className="w-2.5 h-2.5 rounded-full bg-blue-600 animate-ping"></span>
-              Uploading video & generating Drive records...
+              Uploading video & generating order records...
             </span>
             <span className="font-mono font-bold text-blue-800">{uploadProgress || 65}%</span>
           </div>

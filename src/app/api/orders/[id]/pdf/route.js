@@ -1,7 +1,13 @@
 import { NextResponse } from 'next/server';
 import { getAuthUser } from '@/lib/api-auth';
-const { getDb } = require('@/lib/db');
-const { generateOrderPdf } = require('@/lib/pdf');
+const { query } = require('@/lib/db');
+const { generateOrderPdf, getRequestBaseUrl } = require('@/lib/pdf');
+
+function parseNumericId(val) {
+  if (!/^\d+$/.test(String(val))) return -1;
+  const num = Number(val);
+  return Number.isSafeInteger(num) && num >= 0 && num <= 2147483647 ? num : -1;
+}
 
 export async function GET(req, { params }) {
   const user = getAuthUser();
@@ -10,32 +16,34 @@ export async function GET(req, { params }) {
   }
 
   const orderId = params.id;
-  const db = getDb();
-
-  const order = db.prepare(`
-    SELECT 
+  const orderRes = await query(
+    `SELECT 
       o.*,
       c.customer_name,
       c.phone_number,
       c.address
     FROM orders o
     LEFT JOIN customers c ON o.customer_id = c.customer_id
-    WHERE o.order_number = ? OR o.id = ?
-  `).get(orderId, isNaN(orderId) ? -1 : Number(orderId));
+    WHERE o.order_number = $1 OR o.id = $2`,
+    [orderId, parseNumericId(orderId)]
+  );
+  const order = orderRes.rows[0];
 
   if (!order) {
     return NextResponse.json({ error: 'Order not found' }, { status: 404 });
   }
 
-  const video = db.prepare('SELECT * FROM order_videos WHERE order_id = ?').get(order.id);
+  const videoRes = await query('SELECT * FROM order_videos WHERE order_id = $1', [order.id]);
+  const video = videoRes.rows[0] || null;
 
   try {
+    const baseUrl = getRequestBaseUrl(req);
     const pdfBuffer = await generateOrderPdf(order, {
       customer_id: order.customer_id,
       customer_name: order.customer_name,
       phone_number: order.phone_number,
       address: order.address
-    }, video);
+    }, video, baseUrl);
 
     return new Response(pdfBuffer, {
       status: 200,

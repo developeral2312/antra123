@@ -2,7 +2,7 @@ import './globals.css';
 
 export const metadata = {
   title: 'Antra - Customer Order Management & Video Recording System',
-  description: 'Enterprise Customer Order Management, in-browser Video Recording, and Google Drive Cloud Archive',
+  description: 'Enterprise Customer Order Management, in-browser Video Recording, and PostgreSQL Database Archive',
 };
 
 export const viewport = {

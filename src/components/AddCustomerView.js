@@ -172,7 +172,7 @@ export default function AddCustomerView({ onOrderSubmitted, onViewCustomer }) {
             Order #{successInfo.order_number} Successfully Recorded!
           </h2>
           <p className="text-xs sm:text-sm text-slate-500 mt-1">
-            Customer dossier updated for <strong>{customerId}</strong>. All documents and video file are organized in Google Drive folder hierarchy.
+            Customer dossier updated for <strong>{customerId}</strong>. All documents and video file are saved in PostgreSQL and local verified storage.
           </p>
         </div>
 
@@ -190,8 +190,8 @@ export default function AddCustomerView({ onOrderSubmitted, onViewCustomer }) {
             <p className="font-bold text-emerald-600">{videoBlob ? 'Verified & Stored' : 'No Video Attached'}</p>
           </div>
           <div>
-            <span className="text-slate-400 font-medium">Google Drive Sync:</span>
-            <p className="font-bold text-slate-800">{successInfo.drive_synced ? 'Synced to Cloud Drive' : 'Ready in Storage Hierarchy'}</p>
+            <span className="text-slate-400 font-medium">Database Engine:</span>
+            <p className="font-bold text-slate-800">PostgreSQL Verified</p>
           </div>
         </div>
 
@@ -238,7 +238,7 @@ export default function AddCustomerView({ onOrderSubmitted, onViewCustomer }) {
             <span>Add New Customer & Order</span>
           </h2>
           <p className="text-xs text-slate-500 mt-1">
-            Fill customer credentials, capture in-browser video verification, and auto-sync to Google Drive.
+            Fill customer credentials, capture in-browser video verification, and save to PostgreSQL database.
           </p>
         </div>
 
@@ -499,7 +499,7 @@ export default function AddCustomerView({ onOrderSubmitted, onViewCustomer }) {
             disabled={isSubmitting}
             className="w-full sm:w-auto px-8 py-4 bg-blue-600 hover:bg-blue-700 active:bg-blue-800 text-white rounded-2xl text-sm font-bold shadow-lg shadow-blue-600/30 flex items-center justify-center gap-2 transition-all disabled:opacity-60"
           >
-            <span>{isSubmitting ? 'Processing & Archiving Order...' : 'Submit Order & Save to Drive'}</span>
+            <span>{isSubmitting ? 'Processing & Archiving Order...' : 'Submit Order & Save Record'}</span>
             <ArrowRight className="w-4 h-4" />
           </button>
         </div>
